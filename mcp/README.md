@@ -35,23 +35,30 @@ Do **not** use `python -m mcp.server` — that name clashes with the `mcp` packa
 
 ## Wire it to an AI
 
-Configs in this repo (relative `python mcp/server.py`, cwd = project root):
+Relative `python mcp/server.py`, cwd = корень темплейта.
 
-- `.mcp.json` — Claude Code, Grok, others that scan the standard file
-- `.grok/config.toml` — Grok project scope
-- `.cursor/mcp.json` — Cursor
+### Claude Code
 
-Claude Desktop — absolute path in `claude_desktop_config.json`:
+Уже в репозитории, подхватывается при открытии папки:
 
-```json
-{
-  "mcpServers": {
-    "ch32-wch": {
-      "command": "python",
-      "args": ["C:/path/to/CH32v3xx_Cmake/mcp/server.py"]
-    }
-  }
-}
+- `.mcp.json` — MCP-сервер (это штатный файл Claude Code)
+- `.claude.json` — тот же сервер, формат Claude
+- `.claude/skills/ch32-wch/SKILL.md` — скилл
+
+Либо вручную из корня проекта:
+
+```bat
+claude mcp add ch32-wch -- python mcp/server.py
 ```
 
-Agent rules: `.grok/skills/ch32-wch/SKILL.md` (copy into your agent's skills folder if it is not Grok).
+### Claude Desktop
+
+Скопировать содержимое `mcp/claude_desktop_config.example.json` в
+`%APPDATA%\Claude\claude_desktop_config.json` (слить с уже существующими
+`mcpServers`, не затирая чужие). Путь к `server.py` в примере — этот клон;
+на другой машине поправь на свой абсолютный путь. Перезапустить Desktop.
+
+### Grok / Cursor
+
+- `.grok/config.toml` + `.grok/skills/ch32-wch/SKILL.md`
+- `.cursor/mcp.json`

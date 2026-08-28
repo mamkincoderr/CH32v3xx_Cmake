@@ -72,4 +72,7 @@ USART: **PB6** (USART1 remap), 115200 8N1 — так разведён WCH-Link S
 
 ## MCP (сборка / прошивка / отладка для ИИ)
 
-В комплекте stdio-сервер `ch32-wch`: `mcp/server.py`. Подключение и список инструментов — `mcp/README.md`. Скилл для агента — `.grok/skills/ch32-wch/SKILL.md`. GitHub этот MCP не обслуживает.
+В комплекте stdio-сервер `ch32-wch`: `mcp/server.py`. Подключение — `mcp/README.md`.
+Claude Code: `.mcp.json` + `.claude.json` + `.claude/skills/ch32-wch/SKILL.md`.
+Claude Desktop: `mcp/claude_desktop_config.example.json` → `%APPDATA%\Claude\claude_desktop_config.json`.
+Grok: `.grok/config.toml` + `.grok/skills/ch32-wch/SKILL.md`. GitHub этот MCP не обслуживает.

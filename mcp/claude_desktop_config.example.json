@@ -1,9 +1,8 @@
 {
   "mcpServers": {
     "ch32-wch": {
-      "type": "stdio",
       "command": "python",
-      "args": ["mcp/server.py"]
+      "args": ["C:/WORKELX/AI_WRK/CH32v3xx_Cmake/mcp/server.py"]
     }
   }
 }
