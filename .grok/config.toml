@@ -1,0 +1,4 @@
+[mcp_servers.ch32-wch]
+command = "python"
+args = ["mcp/server.py"]
+enabled = true

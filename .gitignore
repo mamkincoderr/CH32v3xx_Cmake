@@ -5,3 +5,7 @@
 # Local working notes; tracked copy is READ.md (no GitHub landing README).
 /README.md
 
+__pycache__/
+*.pyc
+obj/openocd-gdb.log
+

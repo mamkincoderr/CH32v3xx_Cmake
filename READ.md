@@ -69,3 +69,7 @@ USART: **PB6** (USART1 remap), 115200 8N1 — так разведён WCH-Link S
 Есть: `Core/`, `Peripheral/` (SPL WCH), официальные `Debug/debug.c` (delay + USART printf), `User/main.c`.
 
 Нет: ШИМ, АЦП, CAN, PowerGraph, LVGL, загрузчик. Это точка старта нового проекта, не копия DCDC.
+
+## MCP (сборка / прошивка / отладка для ИИ)
+
+В комплекте stdio-сервер `ch32-wch`: `mcp/server.py`. Подключение и список инструментов — `mcp/README.md`. Скилл для агента — `.grok/skills/ch32-wch/SKILL.md`. GitHub этот MCP не обслуживает.

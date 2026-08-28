@@ -10,8 +10,8 @@
       .\flash.ps1 erase | reset | verify | gdb
       .\flash.ps1 program -Raw         dump full OpenOCD log
 
-    Do not flash a CH32V307 image onto a CH32V303 board (different vector
-    table, D8C vs D8). Default Chip is CH32V303 to match the DCDC board.
+    Chip selects which hex/elf. Any image may be programmed onto the
+    connected probe; silicon vs CHIP is not checked.
 
     wch_riscv unfreeze: V307 map is 288K; without unfreeze OpenOCD only
     sees the 128K zero-wait bank. Harmless on a 128K V303 Hello World image.
