@@ -1,0 +1,3 @@
+# Build artifacts stay local. Keep the obj/ directory in the tree.
+/obj/**
+!/obj/.gitkeep
