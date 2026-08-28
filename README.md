@@ -1,5 +1,7 @@
 # CH32v3xx_Cmake
 
+[![visits](https://hits.sh/github.com/mamkincoderr/CH32v3xx_Cmake.svg?view=today-total&label=visits)](https://hits.sh/github.com/mamkincoderr/CH32v3xx_Cmake/)
+
 Шаблон прошивки **Hello World** для WCH **CH32V303** и **CH32V307** (RISC-V).
 
 Сборка — **CMake + Ninja** и GCC 15 из MounRiver Studio 2. Тот же проект открывается в **MRS 1.92** (молоток зовёт `build.bat`, Download берёт hex). Прошивка и GDB — **WCH-Link-E / OpenOCD**.
