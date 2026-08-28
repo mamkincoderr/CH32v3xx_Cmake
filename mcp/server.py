@@ -3,7 +3,7 @@
 
 Author: mamkincoderr
   https://github.com/mamkincoderr
-  https://t.me/mamkincoderr
+  https://t.me/oDeXteRo
 
 Project root is the parent of this file's directory (the template root).
 Run as:  python mcp/server.py

@@ -2,7 +2,7 @@
  * File Name          : main.c
  * Author             : mamkincoderr
  *                      https://github.com/mamkincoderr
- *                      https://t.me/mamkincoderr
+ *                      https://t.me/oDeXteRo
  * WCH EVT            : USART_Printf example (debug.c / SPL)
  * Version            : V1.0.0
  * Date               : 2026/08/28

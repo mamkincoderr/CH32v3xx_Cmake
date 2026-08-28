@@ -4,7 +4,7 @@
 
     Author: mamkincoderr
       https://github.com/mamkincoderr
-      https://t.me/mamkincoderr
+      https://t.me/oDeXteRo
 
     Usage:
       .\flash.ps1                      program obj\CH32V303.hex

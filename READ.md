@@ -1,6 +1,6 @@
 # CH32v3xx_Cmake — Hello World для CH32V303 / CH32V307
 
-Автор: [mamkincoderr](https://github.com/mamkincoderr) · [Telegram](https://t.me/mamkincoderr)
+Автор: [mamkincoderr](https://github.com/mamkincoderr) · [Telegram](https://t.me/oDeXteRo)
 
 Минимальный CMake-шаблон прошивки: `printf("Hello World")` по USART1 (PB6 remap, 115200). Собирается и из консоли, и из **MRS 1.92**.
 Сборка и прошивка — как в `DCDC_Cmake` (CMake + Ninja + GCC 15 из MRS2 + OpenOCD/WCH-Link-E).
