@@ -41,8 +41,9 @@ Relative `python mcp/server.py`, cwd = корень темплейта.
 
 Уже в репозитории, подхватывается при открытии папки:
 
-- `.mcp.json` — MCP-сервер (это штатный файл Claude Code)
-- `.claude.json` — тот же сервер, формат Claude
+- `.mcp.json` — MCP-сервер (штатный файл Claude Code в корне)
+- `.claude/mcp.json` — тот же сервер в папке `.claude/`
+- `.claude.json` — дубль в корне, формат Claude
 - `.claude/skills/ch32-wch/SKILL.md` — скилл
 
 Либо вручную из корня проекта:
