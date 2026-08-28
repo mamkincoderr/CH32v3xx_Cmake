@@ -1,3 +1,7 @@
 # Build artifacts stay local. Keep the obj/ directory in the tree.
 /obj/**
 !/obj/.gitkeep
+
+# Local working notes; tracked copy is READ.md (no GitHub landing README).
+/README.md
+
