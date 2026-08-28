@@ -1,5 +1,8 @@
 # =============================================================================
 # CH32v3xx_Cmake — Hello World template for CH32V303 / CH32V307 (RISC-V)
+# Author: mamkincoderr
+#   https://github.com/mamkincoderr
+#   https://t.me/mamkincoderr
 #
 # Build system copied from DCDC_Cmake (CMake + Ninja + GCC 15 from MRS2).
 # Chip split follows official WCH EVT (openwch/ch32v307):

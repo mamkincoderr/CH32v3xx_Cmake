@@ -1,6 +1,9 @@
 /********************************** (C) COPYRIGHT *******************************
  * File Name          : main.c
- * Author             : WCH
+ * Author             : mamkincoderr
+ *                      https://github.com/mamkincoderr
+ *                      https://t.me/mamkincoderr
+ * WCH EVT            : USART_Printf example (debug.c / SPL)
  * Version            : V1.0.0
  * Date               : 2026/08/28
  * Description        : Hello World — USART1 printf (PA9), 115200.

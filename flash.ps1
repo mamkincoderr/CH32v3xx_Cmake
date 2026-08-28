@@ -2,6 +2,10 @@
     flash.ps1 - program / verify / debug CH32v3xx_Cmake over WCH-Link-E
                 using OpenOCD from MounRiver Studio 2.
 
+    Author: mamkincoderr
+      https://github.com/mamkincoderr
+      https://t.me/mamkincoderr
+
     Usage:
       .\flash.ps1                      program obj\CH32V303.hex
       .\flash.ps1 probe

@@ -1,4 +1,5 @@
 @echo off
+rem Author: mamkincoderr  https://github.com/mamkincoderr  https://t.me/mamkincoderr
 setlocal
 set "PROJ_DIR=%~dp0"
 set "PROJ_DIR=%PROJ_DIR:~0,-1%"

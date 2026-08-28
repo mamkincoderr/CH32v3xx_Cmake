@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """stdio MCP: build / flash / debug CH32V303 and CH32V307 via WCH-Link-E.
 
+Author: mamkincoderr
+  https://github.com/mamkincoderr
+  https://t.me/mamkincoderr
+
 Project root is the parent of this file's directory (the template root).
 Run as:  python mcp/server.py
 Do not run as python -m mcp.server — that shadows the `mcp` package.
