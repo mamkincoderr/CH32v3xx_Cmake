@@ -24,14 +24,24 @@ Do **not** use `python -m mcp.server` — that name clashes with the `mcp` packa
 
 ## Tools
 
+Chip (303 vs 307) is not a tool argument — it is hand-picked in `User/chip_select.h`. `build` and `flash` always act on whatever that file currently says; check `obj/built_as.txt` (mirrored in `build`'s result) to see what was actually built.
+
 | Tool | Role |
 |---|---|
 | `env` | Detect toolchain, OpenOCD, WCH-Link |
-| `build` | `chip=CH32V303\|CH32V307`, `clean` |
-| `flash` | `mode=program\|probe\|verify\|erase\|reset`, `chip` |
-| `debug_start` | GDB server `:3333`, halt |
+| `build` | `clean` (bool). Result includes `chip` from `obj/built_as.txt` |
+| `flash` | `mode=program\|probe\|verify\|erase\|reset\|lock\|unlock`, `confirm` (bool, required for `lock`/`unlock`) |
+| `debug_start` | GDB server `:3333`, halt, ELF = last build |
 | `debug_exec` | gdb `--batch` command list |
 | `debug_stop` | kill server + resume core |
+
+`flash(mode="probe")` identifies the connected chip: `device_id`, `flash_kb`, and (when the log carries it) `rom_kb`/`ram_kb`.
+
+`flash(mode="lock"|"unlock")` touch the `wch_riscv` read-protect option byte and refuse to run without `confirm=true`:
+- `unlock` disables read-protect — this forces a **mass erase**, all firmware is lost, irreversible.
+- `lock` enables read-protect — can leave the chip unprogrammable/undebuggable until unlocked (which then erases it).
+
+Both were verified live against a connected CH32V303 (`unlock` → `Success to Disable Read-Protect`, `lock` → `Success to Enable Read-Protect`, chip stayed reachable, firmware re-flashed afterward).
 
 ## Wire it to an AI
 

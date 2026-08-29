@@ -331,6 +331,9 @@ handle_reset:
 	la gp, __global_pointer$
 .option	pop
 
+	/* SRAM is 32K until option bytes apply; 0x20004000 is inside all 4 modes. */
+	la sp, 0x20004000
+	jal MemConfig
 	la sp, _eusrstack
 
 	la a0, _data_lma

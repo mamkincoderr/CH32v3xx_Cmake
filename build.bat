@@ -1,28 +1,21 @@
 @echo off
 rem Author: mamkincoderr  https://github.com/mamkincoderr  https://t.me/oDeXteRo
-setlocal
+rem Chip is picked by hand in User/chip_select.h — this script takes no chip
+rem argument. Only "clean" is a recognised argument (Eclipse also appends
+rem -jN/all, which are ignored).
+setlocal EnableDelayedExpansion
 set "PROJ_DIR=%~dp0"
 set "PROJ_DIR=%PROJ_DIR:~0,-1%"
 set "TOOLCHAIN=%PROJ_DIR%\cmake\toolchain-wch-gcc15.cmake"
-set "CHIP=CH32V303"
+set "BUILD_DIR=%PROJ_DIR%\obj"
 set "IS_CLEAN=0"
 
 rem %ProgramFiles(x86)% must be captured OUTSIDE any parenthesised block.
 set "PF_X86=%ProgramFiles(x86)%"
 
-rem Args: optional CHIP (CH32V303|CH32V307) and/or clean.
 for %%A in (%*) do (
-    if /i "%%~A"=="clean" set "IS_CLEAN=1"
-    if /i "%%~A"=="CH32V303" set "CHIP=CH32V303"
-    if /i "%%~A"=="CH32V307" set "CHIP=CH32V307"
-)
-
-rem V303 lands in obj\ (MRS config name "obj", Download looks here).
-rem V307 stays in obj\CH32V307\ so the two caches never overwrite each other.
-if /i "%CHIP%"=="CH32V303" (
-    set "BUILD_DIR=%PROJ_DIR%\obj"
-) else (
-    set "BUILD_DIR=%PROJ_DIR%\obj\%CHIP%"
+    set "ARG=%%~A"
+    if /i "!ARG!"=="clean" set "IS_CLEAN=1"
 )
 
 set "CMAKE_EXE=cmake"
@@ -67,12 +60,26 @@ if "%IS_CLEAN%"=="1" (
     exit /b 0
 )
 
-echo [build.bat] CHIP=%CHIP%  out=%BUILD_DIR%
+echo [build.bat] ========================================
+echo [build.bat] out=%BUILD_DIR%  (chip: see User\chip_select.h)
+echo [build.bat] ========================================
 if not exist "%BUILD_DIR%\CMakeCache.txt" (
-    "%CMAKE_EXE%" -G Ninja -B "%BUILD_DIR%" -S "%PROJ_DIR%" -DCMAKE_TOOLCHAIN_FILE="%TOOLCHAIN%" -DCMAKE_MAKE_PROGRAM="%NINJA_EXE%" -DCHIP=%CHIP%
+    "%CMAKE_EXE%" -G Ninja -B "%BUILD_DIR%" -S "%PROJ_DIR%" -DCMAKE_TOOLCHAIN_FILE="%TOOLCHAIN%" -DCMAKE_MAKE_PROGRAM="%NINJA_EXE%"
 ) else (
-    "%CMAKE_EXE%" -B "%BUILD_DIR%" -S "%PROJ_DIR%" -DCHIP=%CHIP%
+    "%CMAKE_EXE%" -B "%BUILD_DIR%" -S "%PROJ_DIR%"
 )
 if errorlevel 1 exit /b 1
+
 "%NINJA_EXE%" -C "%BUILD_DIR%"
-exit /b %errorlevel%
+if errorlevel 1 exit /b %errorlevel%
+
+if exist "%BUILD_DIR%\built_as.txt" (
+    echo [build.bat] ---- built_as.txt ----
+    type "%BUILD_DIR%\built_as.txt"
+)
+if not exist "%BUILD_DIR%\CH32v3xx_Cmake.elf" (
+    echo [build.bat] ERROR: expected %BUILD_DIR%\CH32v3xx_Cmake.elf
+    exit /b 1
+)
+echo [build.bat] ELF=%BUILD_DIR%\CH32v3xx_Cmake.elf
+exit /b 0

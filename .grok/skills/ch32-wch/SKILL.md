@@ -18,15 +18,17 @@ Project root is the template directory (parent of `mcp/`).
 ## Tools
 
 1. `env` — cmake, ninja, GCC 15, OpenOCD, GDB, WCH-Link. Need `wch_link.rv_mode=true` (`VID_1A86&PID_8010`). `PID_8012` is ARM mode — switch the adapter with WCH-LinkUtility.
-2. `build` — `chip`: `CH32V303` (default) or `CH32V307`. `clean`: bool.
-3. `flash` — `mode`: `program` | `probe` | `verify` | `erase` | `reset`. `chip` selects the hex/elf. Program any built image onto the connected probe; do not refuse a CHIP/silicon mismatch.
+2. `build` — no chip argument. Chip is hand-picked in `User/chip_select.h` (`CH32v3xx_CHIP` 303 or 307), CMake reads that file. `clean`: bool. Result includes `chip` = contents of `obj/built_as.txt` so you can see what was actually built.
+3. `flash` — `mode`: `program` | `probe` | `verify` | `erase` | `reset` | `lock` | `unlock`. Uses whatever `build` last produced. Program any built image onto the connected probe; do not refuse a CHIP/silicon mismatch.
+   - `probe` identifies the connected chip: `device_id`, `flash_kb` (and `rom_kb`/`ram_kb` when the log carries them).
+   - `lock`/`unlock` touch the read-protect option byte and are **refused unless `confirm=true`**. `unlock` forces a mass erase — all firmware lost, irreversible. `lock` can leave the chip unprogrammable/undebuggable until unlocked (which then erases it). Only pass `confirm=true` after the user has explicitly asked for a lock/unlock in this conversation — never default to it or infer approval from an unrelated build/flash request. Verified live on a CH32V303: `unlock` → `Success to Disable Read-Protect`, `lock` → `Success to Enable Read-Protect`, chip stayed reachable both times.
 4. `debug_start` → `debug_exec` → **always** `debug_stop`.
 
 Judge flash success by JSON `ok` (from log markers such as `** Verified OK **`), not OpenOCD's process exit code.
 
 ## Debug
 
-- `debug_start(chip)` — OpenOCD GDB server `:3333`, core halted.
+- `debug_start()` — OpenOCD GDB server `:3333`, core halted, ELF = whatever was last built.
 - `debug_exec(commands)` — gdb `--batch` list, e.g. `["bt", "info registers pc sp ra", "info line *$pc"]`.
 - `debug_stop` — kill the server and `wlink_reset_resume`. Leaving halt stuck the board.
 
@@ -34,10 +36,9 @@ One-shot snapshot: start → exec → stop. Session: start, several execs, stop 
 
 ## Artifacts
 
-- CH32V303: `obj/CH32V303.elf` / `.hex`
-- CH32V307: `obj/CH32V307/CH32V307.elf` / `.hex`
+Single output, chip-independent name: `obj/CH32v3xx_Cmake.elf` / `.hex`. `obj/built_as.txt` says which chip (303/307) that binary actually is — check it before flashing, since it reflects `User/chip_select.h` at the time of the last `build`, not whatever the caller assumes.
 
-`flash program` needs a prior `build` for that chip. LTO is off in CMake — keep it off for stepping.
+`flash program` needs a prior `build`. LTO is off in CMake — keep it off for stepping.
 
 ## Do not
 
@@ -95,32 +96,34 @@ Keep the target's `Core/`, `Peripheral/`, `Startup/`, `Debug/`, `Ld/`, `User/` i
 
 ## 3. Adapt CMakeLists.txt
 
-- `project(<Name> C ASM)` — artifact names follow this or the `CHIP` cache string.
-- `CHIP` cache + `CHIP_DEFINE` + **one** `STARTUP_FILE` + matching `LINKER_SCRIPT`.
+- `project(<Name> C ASM)` — single fixed artifact name (`${PROJECT_NAME}`), not a per-chip string. One `obj/`, no CHIP cache variable.
+- Chip is selected by hand in a plain tracked header (this template: `User/chip_select.h`, macro `CH32v3xx_CHIP` = 303/307), **not** a CMake cache var / command-line `-DCHIP=`. CMake reads that file with `file(READ) + string(MATCHES)` regex to pick `CHIP_DEFINE` + **one** `STARTUP_FILE` + matching `LINKER_SCRIPT`. This is deliberate, not a shortcut: a CMake `-D`/generated-header scheme is invisible to MRS 1.92's CDT indexer (Managed Build off, no compile_commands.json support in its CDT 6.5), so `#if`/`#elif` greying in the editor goes wrong. A plain header that main.c `#include`s directly resolves the same way for the real compiler and for the indexer. Force-include the same header (`-include`) for the vendor sources (Core/Peripheral/Debug) that don't include it themselves.
+- CH32V30x CodeFlash is 480K: R0WAIT (zero-wait, the datasheet "Flash" column) plus SLOWFLASH (non-zero wait). CH32V303CB/RB: FLASH 128K at 0, SLOWFLASH 352K at `0x20000`. CH32V307: SLOWFLASH starts after the CODE window from `#define CH32V307_MEM` in `User/ch32v307_mem.h` (`MEM288_32` / `MEM256_64` / `MEM224_96` / `MEM192_128`) — same hand-edited-header-read-by-regex pattern as the chip pick. CMake generates the 307 MEMORY map. `MemConfig()` is called from `startup_ch32v30x_D8C.S` only — do not rewrite D8. CH32V303CB/RB has no RAM_CODE_MOD.
 - `CPU_FLAGS`: V30x keep `rv32imafcxw` / `ilp32f`; V20x use `rv32imacxw` / `ilp32` (no `f`). Do not “upgrade” V203 to `ilp32f`.
 - `add_folder_objects` only for directories that contain `*.c` **directly** (not recursive). Extra app folders (`User/Lib`, …) need extra calls.
 - Startup: `add_library(objs_startup OBJECT ${STARTUP_FILE})` — never GLOB `Startup/*.S`.
 - Post-build: hex, bin, `size`. LTO off unless the user asks (breaks source-level step).
 - Link: `-T` the chosen `Ld/*.ld`, `-nostartfiles`, `--specs=nano.specs --specs=nosys.specs`, `--gc-sections`.
 
-`build.bat`: default CHIP = the board on the desk; extra Eclipse args (`-j24 all` / `clean`) must be scanned in all `%*`. Default V30x hex for MRS: `obj\<CHIP>.hex` in the configuration named `obj`.
+`build.bat`: no chip argument — chip comes from the hand-edited header, CMake reconfigures automatically when it changes. Only recognised argument is `clean`; extra Eclipse args (`-j24 all`) are ignored. Artifact: `obj\<ProjectName>.hex`.
 
 ## 4. MRS 1.92 (human workflow)
 
-MRS 1.92 remains the engineer IDE. Managed Build **off**:
+MRS 1.92 remains the engineer IDE. Managed Build **off**. One firmware tree, **one** Eclipse configuration, one `.project`/`.template`/`.launch` — chip is not a build-config axis, it lives in the hand-edited header from step 3.
 
-- `.cproject`: `managedBuildOn="false"`, builder `command=".../build.bat"`, `cleanBuildTarget="clean"`.
-- `.template`: `Target Path=obj\<artifact>.hex`, `Series` / `MCU` = actual part (e.g. CH32V303CBT6 or CH32V203C8T6).
+- `.cproject`: `managedBuildOn="false"`, builder `command=".../build.bat"`, `arguments=""`, `cleanBuildTarget="clean"`. Single `cconfiguration`.
+- `.template`: one Download target, `Target Path=obj\<ProjectName>.hex`. The MCU/Series fields are static (pick the primary board) — cosmetic only, OpenOCD doesn't gate on them.
+- Debug: one `.launch`. Image/symbols = the single CMake ELF. SVD is also static (`template/wizard/WCH/RISC-V/<primary-chip>/NoneOS/<chip>xx.svd`) — note in docs that switching the hand-edited chip header to the other family means editing `svdPath` too if the register view in the debugger needs to match.
 - Exclude unused `startup_*.S` from the indexer (`sourceEntries excluding=`).
 - Download and Debug use the hex/elf produced by `build.bat`, not MRS internal make.
 
 ## 5. flash.ps1 / MCP
 
-- Point default image/elf at the CMake outputs.
+- Point default image/elf at the single CMake output (no chip argument — `flash.ps1`/MCP `flash` always use whatever `build` last produced).
 - OpenOCD: same `wch-riscv.cfg` + WCH-Link-E for V20x and V30x.
 - `unfreeze` before programming if the image (or `.rodata`) crosses the 128 K zero-wait window; harmless on small V203 images.
 - Every halt session except live GDB must end with `wlink_reset_resume`.
-- MCP `CHIPS` / `build` / `flash` arguments: add the new part names if you introduce V203/V208. Do not block programming because CHIP ≠ `device id`.
+- Do not block programming because the chip in `obj/built_as.txt` ≠ `device id` read off the probe.
 - Success: log markers (`** Verified OK **`, `flash 'wch_riscv' found at`), not OpenOCD exit code.
 
 ## 6. Verify

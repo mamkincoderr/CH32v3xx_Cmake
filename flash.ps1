@@ -7,61 +7,58 @@
       https://t.me/oDeXteRo
 
     Usage:
-      .\flash.ps1                      program obj\CH32V303.hex
-      .\flash.ps1 probe
-      .\flash.ps1 CH32V307             program the V307 image
-      .\flash.ps1 CH32V307 probe
+      .\flash.ps1                      program obj\CH32v3xx_Cmake.hex
+      .\flash.ps1 probe                device id, flash size, ROM/RAM, read-protect state
       .\flash.ps1 erase | reset | verify | gdb
       .\flash.ps1 program -Raw         dump full OpenOCD log
+      .\flash.ps1 unlock -Confirm      disable read-protect - MASS ERASES flash, all firmware lost
+      .\flash.ps1 lock -Confirm        enable read-protect - blocks further program/debug until unlocked
 
-    Chip selects which hex/elf. Any image may be programmed onto the
-    connected probe; silicon vs CHIP is not checked.
+    Chip is whatever User/chip_select.h says the last build.bat run used
+    (see obj/built_as.txt). Any image may be programmed onto the connected
+    probe; silicon vs chip_select.h is not checked.
 
-    wch_riscv unfreeze: V307 map is 288K; without unfreeze OpenOCD only
-    sees the 128K zero-wait bank. Harmless on a 128K V303 Hello World image.
+    lock/unlock use the wch_riscv driver's generic 'flash protect' hook and
+    refuse to run without -Confirm: unlock forces a mass erase (irreversible,
+    all firmware lost), lock can leave the chip unprogrammable/undebuggable
+    until unlocked (which then erases it).
+
+    wch_riscv unfreeze: without it OpenOCD only sees the 128K R0WAIT bank.
+    Needed when the image has SLOWFLASH (.rodata at 0x20000 on V303, or past
+    the CODE window on V307).
 #>
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
     [string]$Arg1,
 
-    [Parameter(Position = 1)]
-    [string]$Arg2,
-
     [string]$Image,
-    [switch]$Raw
+    [switch]$Raw,
+    [switch]$Confirm
 )
 
 $ErrorActionPreference = 'Stop'
 $proj = $PSScriptRoot
 
-$modes = @('program', 'probe', 'erase', 'reset', 'verify', 'gdb')
-$chips = @('CH32V303', 'CH32V307')
+$modes = @('program', 'probe', 'erase', 'reset', 'verify', 'gdb', 'lock', 'unlock')
+$destructiveModes = @('lock', 'unlock')
 $Mode = 'program'
-$Chip = 'CH32V303'
 
-foreach ($a in @($Arg1, $Arg2)) {
-    if (-not $a) { continue }
-    $hit = $false
-    foreach ($m in $modes) {
-        if ($a -eq $m) { $Mode = $m; $hit = $true; break }
+if ($Arg1) {
+    if ($modes -notcontains $Arg1) {
+        throw "Unknown argument '$Arg1'. Use program|probe|erase|reset|verify|gdb|lock|unlock."
     }
-    if ($hit) { continue }
-    foreach ($c in $chips) {
-        if ($a -eq $c) { $Chip = $c; $hit = $true; break }
-    }
-    if (-not $hit) {
-        throw "Unknown argument '$a'. Use Mode (program|probe|erase|reset|verify|gdb) and/or Chip (CH32V303|CH32V307)."
-    }
+    $Mode = $Arg1
 }
 
-function Get-ChipDir([string]$chip) {
-    if ($chip -eq 'CH32V303') { return (Join-Path $proj 'obj') }
-    return (Join-Path $proj "obj\$chip")
+if ($destructiveModes -contains $Mode -and -not $Confirm) {
+    throw "Mode '$Mode' is destructive and needs -Confirm. unlock forces a mass erase (all firmware lost); lock can block further programming/debug until unlocked (which then erases). Re-run as: .\flash.ps1 $Mode -Confirm"
 }
+
+$chipDir = Join-Path $proj 'obj'
 
 if (-not $Image) {
-    $Image = Join-Path (Get-ChipDir $Chip) "$Chip.hex"
+    $Image = Join-Path $chipDir 'CH32v3xx_Cmake.hex'
 }
 
 function Find-OpenOcdDir {
@@ -92,11 +89,13 @@ $cmds = switch ($Mode) {
     'reset'  { @('init', 'wlink_reset_resume') }
     'verify' { @('init', 'halt', "verify_image $imageFwd", 'wlink_reset_resume') }
     'gdb'    { @('init', 'halt') }
+    'lock'   { @('init', 'halt', 'flash protect 0 0 last on', 'wlink_reset_resume') }
+    'unlock' { @('init', 'halt', 'flash protect 0 0 last off', 'wlink_reset_resume') }
     default  { @('init', 'wch_riscv unfreeze', 'halt', "program $imageFwd verify", 'wlink_reset_resume') }
 }
 
 if ($Mode -eq 'program' -or $Mode -eq 'verify') {
-    if (-not (Test-Path $Image)) { throw "Image '$Image' missing - run build.bat $Chip first." }
+    if (-not (Test-Path $Image)) { throw "Image '$Image' missing - run build.bat first." }
 }
 
 function ConvertTo-QuotedArg([string]$a) { if ($a -match '\s') { return '"' + $a + '"' } return $a }
@@ -105,7 +104,7 @@ $argv = @('-f', (ConvertTo-QuotedArg $ocdCfg))
 foreach ($c in $cmds) { $argv += @('-c', (ConvertTo-QuotedArg $c)) }
 
 if ($Mode -eq 'gdb') {
-    $elf = Join-Path (Get-ChipDir $Chip) "$Chip.elf"
+    $elf = Join-Path $chipDir 'CH32v3xx_Cmake.elf'
     Write-Host "GDB server on localhost:3333"
     Write-Host "  riscv32-wch-elf-gdb `"$elf`" -ex `"target remote :3333`""
     $live = @('-f', $ocdCfg); foreach ($c in $cmds) { $live += @('-c', $c) }
@@ -116,7 +115,6 @@ if ($Mode -eq 'gdb') {
 $argv += @('-c', 'exit')
 
 Write-Host "OpenOCD : $ocdExe"
-Write-Host "Chip    : $Chip"
 if ($Mode -eq 'program' -or $Mode -eq 'verify') { Write-Host "Image   : $Image" }
 Write-Host "Mode    : $Mode"
 
@@ -143,7 +141,7 @@ $errors = $log | Where-Object { $_ -match '^(Error|Warn)\s*:' } |
 
 if (-not $Raw) {
     $log | Where-Object {
-        $_ -match 'device id|flash size|erased sectors|Programming|Verif|wrote|found at|discontinued|WCH-Link'
+        $_ -match 'device id|flash size|ROM \d+ kbytes|erased sectors|Programming|Verif|wrote|found at|discontinued|WCH-Link|Read-Protect'
     } | ForEach-Object { Write-Host "  $_" }
 }
 
@@ -154,6 +152,8 @@ $ok = switch ($Mode) {
     'verify'  { @($log -match 'verified|Verified OK').Count -gt 0 }
     'erase'   { @($log -match 'erased sectors').Count -gt 0 }
     'probe'   { @($log -match "flash 'wch_riscv' found at").Count -gt 0 }
+    'lock'    { @($log -match 'Success to Enable Read-Protect|Read-Protect Status Currently Enabled').Count -gt 0 }
+    'unlock'  { @($log -match 'Success to Disable Read-Protect').Count -gt 0 }
     default   { @($log -match 'wlink_init ok').Count -gt 0 }
 }
 

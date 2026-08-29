@@ -23,7 +23,7 @@
   <stringAttribute key="com.mounriver.debug.gdbjtag.openocd.otherRunCommands" value="" />
   <stringAttribute key="com.mounriver.debug.gdbjtag.openocd.secondResetType" value="halt" />
   <stringAttribute key="com.mounriver.debug.gdbjtag.svdPath" value="${eclipse_home}template/wizard/WCH/RISC-V/CH32V303/NoneOS/CH32V303xx.svd" />
-  <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.imageFileName" value="${workspace_loc:/CH32v3xx_Cmake/obj/CH32V303.elf}" />
+  <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.imageFileName" value="${workspace_loc:/CH32v3xx_Cmake/obj/CH32v3xx_Cmake.elf}" />
   <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.imageOffset" value="" />
   <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.ipAddress" value="localhost" />
   <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.jtagDevice" value="GNU MCU OpenOCD" />
@@ -35,12 +35,13 @@
   <booleanAttribute key="org.eclipse.cdt.debug.gdbjtag.core.setResume" value="false" />
   <booleanAttribute key="org.eclipse.cdt.debug.gdbjtag.core.setStopAt" value="true" />
   <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.stopAt" value="main" />
-  <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.symbolsFileName" value="${workspace_loc:/CH32v3xx_Cmake/obj/CH32V303.elf}" />
+  <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.symbolsFileName" value="${workspace_loc:/CH32v3xx_Cmake/obj/CH32v3xx_Cmake.elf}" />
   <stringAttribute key="org.eclipse.cdt.debug.gdbjtag.core.symbolsOffset" value="" />
   <booleanAttribute key="org.eclipse.cdt.debug.gdbjtag.core.useProjBinaryForImage" value="false" />
   <booleanAttribute key="org.eclipse.cdt.debug.gdbjtag.core.useProjBinaryForSymbols" value="false" />
   <booleanAttribute key="org.eclipse.cdt.debug.gdbjtag.core.useRemoteTarget" value="true" />
-  <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="true" />
+  <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="false" />
+  <stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="ilg.gnumcueclipse.managedbuild.cross.riscv.config.elf.release.1008047074" />
   <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="CH32v3xx_Cmake" />
   <booleanAttribute key="org.eclipse.debug.core.appendEnvironmentVariables" value="true" />
 </launchConfiguration>

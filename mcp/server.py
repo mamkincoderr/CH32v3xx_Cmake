@@ -24,20 +24,29 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CHIPS = ("CH32V303", "CH32V307")
-FLASH_MODES = ("program", "probe", "verify", "erase", "reset")
+FLASH_MODES = ("program", "probe", "verify", "erase", "reset", "lock", "unlock")
+DESTRUCTIVE_FLASH_MODES = ("lock", "unlock")
 GDB_PORT = 3333
+BUILD_DIR = PROJECT_ROOT / "obj"
+ARTIFACT_NAME = "CH32v3xx_Cmake"
 
 _ocd_proc: Optional[subprocess.Popen] = None
 _ocd_log: Optional[Path] = None
-_debug_chip: str = "CH32V303"
 
 mcp = FastMCP(
     "ch32-wch",
     instructions=(
-        "Build, flash and debug WCH CH32V303/CH32V307 firmware in this "
-        "CMake+Ninja template using WCH-Link-E / OpenOCD. Any built image "
-        "may be programmed onto the connected probe."
+        "Build, flash and debug this WCH CH32V303/CH32V307 CMake+Ninja "
+        "template using WCH-Link-E / OpenOCD. The chip (303 vs 307) is "
+        "picked by hand in User/chip_select.h, not by a tool argument — "
+        "read obj/built_as.txt after build() to see which chip was built. "
+        "Any built image may be programmed onto the connected probe. "
+        "flash(mode='probe') identifies the connected chip (device_id, "
+        "flash_kb, rom_kb, ram_kb, read_protect). flash(mode='lock'|'unlock') "
+        "touch the read-protect option byte and refuse to run unless called "
+        "with confirm=true — only set that after the user explicitly asks "
+        "for a lock or unlock in this conversation; unlock is an "
+        "irreversible mass erase of all firmware."
     ),
 )
 
@@ -47,25 +56,8 @@ def _ok(ok: bool, **fields) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
-def _normalize_chip(chip: str) -> str:
-    c = (chip or "CH32V303").strip().upper()
-    if c in ("303", "V303"):
-        c = "CH32V303"
-    if c in ("307", "V307"):
-        c = "CH32V307"
-    if c not in CHIPS:
-        raise ValueError(f"chip must be one of {CHIPS}, got {chip!r}")
-    return c
-
-
-def _chip_dir(chip: str) -> Path:
-    if chip == "CH32V303":
-        return PROJECT_ROOT / "obj"
-    return PROJECT_ROOT / "obj" / chip
-
-
-def _artifact(chip: str, ext: str) -> Path:
-    return _chip_dir(chip) / f"{chip}.{ext}"
+def _artifact(ext: str) -> Path:
+    return BUILD_DIR / f"{ARTIFACT_NAME}.{ext}"
 
 
 def _drives() -> list[str]:
@@ -224,25 +216,25 @@ def env() -> str:
     )
 
 
-@mcp.tool(description="Build firmware with build.bat (CMake+Ninja, GCC 15). chip=CH32V303|CH32V307.")
-def build(chip: str = "CH32V303", clean: bool = False) -> str:
-    chip = _normalize_chip(chip)
+@mcp.tool(description="Build firmware with build.bat (CMake+Ninja, GCC 15). Chip is picked by hand in User/chip_select.h — this tool takes no chip argument.")
+def build(clean: bool = False) -> str:
     bat = PROJECT_ROOT / "build.bat"
-    cmd = ["cmd", "/c", str(bat), chip]
+    cmd = ["cmd", "/c", str(bat)]
     if clean:
         cmd.append("clean")
     try:
         code, log = _run(cmd, timeout=180)
     except subprocess.TimeoutExpired:
-        return _ok(False, chip=chip, error="build timed out")
-    hex_path = _artifact(chip, "hex")
-    elf_path = _artifact(chip, "elf")
+        return _ok(False, error="build timed out")
+    hex_path = _artifact("hex")
+    elf_path = _artifact("elf")
+    built_as = BUILD_DIR / "built_as.txt"
     success = code == 0 and (clean or hex_path.is_file())
     return _ok(
         success,
-        chip=chip,
         clean=clean,
         exit_code=code,
+        chip=built_as.read_text(encoding="utf-8").strip() if built_as.is_file() else None,
         hex=str(hex_path) if hex_path.is_file() else None,
         elf=str(elf_path) if elf_path.is_file() else None,
         log=log[-8000:],
@@ -252,15 +244,34 @@ def build(chip: str = "CH32V303", clean: bool = False) -> str:
 @mcp.tool(
     description=(
         "Flash via flash.ps1 / WCH-Link-E OpenOCD. "
-        "mode=program|probe|verify|erase|reset. chip selects the hex/elf. "
-        "Does not compare CHIP to silicon — any image may be programmed."
+        "mode=program|probe|verify|erase|reset|lock|unlock. Uses whatever "
+        "build.bat last built (see User/chip_select.h). Does not compare "
+        "that to the connected silicon — any image may be programmed. "
+        "lock/unlock are destructive (see their own docstring) and refuse "
+        "to run without confirm=true."
     )
 )
-def flash(mode: str = "program", chip: str = "CH32V303") -> str:
-    chip = _normalize_chip(chip)
+def flash(mode: str = "program", confirm: bool = False) -> str:
+    """mode=lock enables read-protect: can leave the chip unprogrammable/
+    undebuggable until unlocked. mode=unlock disables read-protect: this
+    forces a mass erase on WCH RISC-V parts — ALL firmware is lost,
+    irreversibly. Only pass confirm=true after the user has explicitly
+    approved one of these two modes for this specific run; never default
+    to true or infer approval from an unrelated request."""
     mode = (mode or "program").strip().lower()
     if mode not in FLASH_MODES:
         return _ok(False, error=f"mode must be one of {FLASH_MODES}")
+    if mode in DESTRUCTIVE_FLASH_MODES and not confirm:
+        return _ok(
+            False,
+            mode=mode,
+            error=(
+                f"mode={mode} is destructive and was not run. unlock forces a mass "
+                "erase (all firmware lost, irreversible); lock can block further "
+                "programming/debug until unlocked (which then erases). Call again "
+                "with confirm=true only after the user explicitly approved this."
+            ),
+        )
     ps1 = PROJECT_ROOT / "flash.ps1"
     cmd = [
         "powershell",
@@ -270,34 +281,43 @@ def flash(mode: str = "program", chip: str = "CH32V303") -> str:
         "-File",
         str(ps1),
         mode,
-        chip,
     ]
+    if mode in DESTRUCTIVE_FLASH_MODES:
+        cmd.append("-Confirm")
     try:
         code, log = _run(cmd, timeout=90)
     except subprocess.TimeoutExpired:
-        return _ok(False, chip=chip, mode=mode, error="flash timed out")
+        return _ok(False, mode=mode, error="flash timed out")
     success = _flash_ok(mode, log)
     id_m = re.search(r"device id\s*=\s*(0x[0-9a-fA-F]+)", log)
+    flash_kb_m = re.search(r"flash size\s*=\s*(\d+)\s*kbytes", log, re.I)
+    rom_ram_m = re.search(r"ROM\s+(\d+)\s*kbytes\s+RAM\s+(\d+)\s*kbytes", log, re.I)
+    protect_m = re.search(
+        r"Success to (Enable|Disable) Read-Protect|Read-Protect Status Currently Enabled",
+        log,
+    )
     return _ok(
         success,
-        chip=chip,
         mode=mode,
         exit_code=code,
         device_id=id_m.group(1) if id_m else None,
-        image=str(_artifact(chip, "hex")) if mode in ("program", "verify") else None,
+        flash_kb=int(flash_kb_m.group(1)) if flash_kb_m else None,
+        rom_kb=int(rom_ram_m.group(1)) if rom_ram_m else None,
+        ram_kb=int(rom_ram_m.group(2)) if rom_ram_m else None,
+        read_protect=protect_m.group(0) if protect_m else None,
+        image=str(_artifact("hex")) if mode in ("program", "verify") else None,
         log=log[-8000:],
     )
 
 
-@mcp.tool(description="Start OpenOCD GDB server on localhost:3333 and halt the core. chip selects the ELF for later debug_exec.")
-def debug_start(chip: str = "CH32V303") -> str:
-    global _ocd_proc, _ocd_log, _debug_chip
-    chip = _normalize_chip(chip)
+@mcp.tool(description="Start OpenOCD GDB server on localhost:3333 and halt the core, using whatever build.bat last built.")
+def debug_start() -> str:
+    global _ocd_proc, _ocd_log
     _kill_ocd()
     ocd_exe, ocd_cfg = _find_openocd()
     if not ocd_exe or not ocd_cfg:
         return _ok(False, error="openocd.exe / wch-riscv.cfg not found")
-    elf = _artifact(chip, "elf")
+    elf = _artifact("elf")
     log_path = PROJECT_ROOT / "obj" / "openocd-gdb.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_f = open(log_path, "w", encoding="utf-8", errors="replace")
@@ -317,7 +337,6 @@ def debug_start(chip: str = "CH32V303") -> str:
         return _ok(False, error=str(e))
     _ocd_proc = proc
     _ocd_log = log_path
-    _debug_chip = chip
     deadline = time.time() + 15
     text = ""
     while time.time() < deadline:
@@ -333,7 +352,6 @@ def debug_start(chip: str = "CH32V303") -> str:
             return _ok(
                 True,
                 port=GDB_PORT,
-                chip=chip,
                 elf=str(elf) if elf.is_file() else None,
                 gdb=f'riscv32-wch-elf-gdb "{elf}" -ex "target remote :3333"',
             )
@@ -350,7 +368,7 @@ def debug_exec(commands: list[str]) -> str:
     gdb = (gcc_bin / "riscv32-wch-elf-gdb.exe") if gcc_bin else None
     if not gdb or not gdb.is_file():
         return _ok(False, error="riscv32-wch-elf-gdb not found")
-    elf = _artifact(_debug_chip, "elf")
+    elf = _artifact("elf")
     cmd = [str(gdb), "--batch", "-q"]
     if elf.is_file():
         cmd.append(str(elf))
@@ -365,7 +383,7 @@ def debug_exec(commands: list[str]) -> str:
         code, log = _run(cmd, timeout=30)
     except subprocess.TimeoutExpired:
         return _ok(False, error="gdb timed out")
-    return _ok(code == 0, chip=_debug_chip, exit_code=code, output=log[-8000:])
+    return _ok(code == 0, exit_code=code, output=log[-8000:])
 
 
 @mcp.tool(description="Stop the GDB server and resume the core (wlink_reset_resume). Always call this after debug_start.")

@@ -1,16 +1,18 @@
 ENTRY( _start )
 
-/* Default map MEM288_32 (EVT). CMake overwrites obj/.../Link_ch32v307.ld
-   from Link_ch32v307.ld.in according to CH32V307_MEM in User/main.c. */
+/* CH32V307 — generated from this template by CMake.
+   CH32V307_MEM in User/main.c selects one of 4 RAM_CODE_MOD maps.
+   Physical flash 480K. First 128K of CODE is 0-wait; SLOWFLASH is the
+   remainder after the CODE window (wait-state), used for .rodata. */
 __stack_size = 2048;
 
 PROVIDE( _stack_size = __stack_size );
 
 MEMORY
 {
-	FLASH     (rx) : ORIGIN = 0x00000000, LENGTH = 288K
-	SLOWFLASH (rx) : ORIGIN = 0x00048000, LENGTH = 192K
-	RAM       (xrw): ORIGIN = 0x20000000, LENGTH = 32K
+	FLASH     (rx) : ORIGIN = 0x00000000, LENGTH = @V307_FLASH_LEN@
+	SLOWFLASH (rx) : ORIGIN = @V307_SLOW_ORIGIN@, LENGTH = @V307_SLOW_LEN@
+	RAM       (xrw): ORIGIN = 0x20000000, LENGTH = @V307_RAM_LEN@
 }
 
 SECTIONS

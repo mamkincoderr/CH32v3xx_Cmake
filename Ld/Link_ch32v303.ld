@@ -1,15 +1,17 @@
 ENTRY( _start )
 
-/* Official EVT map for CH32V30x_D8 CH32V303CB / CH32V303RB
-   (commented-out block in openwch/ch32v307 EVT/EXAM/SRC/Ld/Link.ld). */
+/* CH32V303CB/RB (D8). Datasheet CodeFlash = 480K:
+   R0WAIT (table "Flash") 128K + non-zero wait data area.
+   Same split as Master16A: FLASH 128K, SLOWFLASH from 0x20000. */
 __stack_size = 2048;
 
 PROVIDE( _stack_size = __stack_size );
 
 MEMORY
 {
-	FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 128K
-	RAM (xrw)  : ORIGIN = 0x20000000, LENGTH = 32K
+	FLASH     (rx) : ORIGIN = 0x00000000, LENGTH = 128K
+	SLOWFLASH (rx) : ORIGIN = 0x00020000, LENGTH = 352K
+	RAM       (xrw): ORIGIN = 0x20000000, LENGTH = 32K
 }
 
 SECTIONS
@@ -34,11 +36,20 @@ SECTIONS
 		. = ALIGN(4);
 		*(.text)
 		*(.text.*)
-		*(.rodata)
-		*(.rodata*)
 		*(.gnu.linkonce.t.*)
 		. = ALIGN(4);
 	} >FLASH AT>FLASH
+
+	.SLOWFLASH :
+	{
+		. = ALIGN(4);
+		*(.rodata)
+		*(.rodata*)
+		*(.fl_data)
+		*(.SLOWFLASH)
+		*(.SLOWFLASH.*)
+		. = ALIGN(4);
+	} >SLOWFLASH AT>SLOWFLASH
 
 	.fini :
 	{
