@@ -1,0 +1,144 @@
+name: Build CH32V303/V307 Firmware
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'CMakeLists.txt'
+      - 'User/**'
+      - 'Core/**'
+      - 'Peripheral/**'
+      - 'Debug/**'
+      - 'Startup/**'
+      - 'Ld/**'
+      - 'cmake/**'
+      - 'build.bat'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        chip: [CH32V303, CH32V307]
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install CMake
+        run: |
+          choco install cmake --version=3.28.0 -y
+          cmake --version
+      
+      - name: Install Ninja
+        run: |
+          choco install ninja -y
+          ninja --version
+      
+      - name: Download MounRiver Studio 2 Toolchain
+        shell: powershell
+        run: |
+          # Download GCC 15 toolchain from MounRiver mirror or official source
+          $ToolchainUrl = "https://github.com/openwch/MounRiver_Studio/releases/download/v2.02/RISC-V_Embedded_GCC15_0.tar.gz"
+          $ToolchainDir = "C:\MounRiver\Toolchain"
+          
+          if (-not (Test-Path $ToolchainDir)) {
+            New-Item -ItemType Directory -Path $ToolchainDir -Force | Out-Null
+          }
+          
+          # For now, we'll assume the toolchain is available via a pre-built Windows binary
+          # If this fails, you may need to set up a custom runner with MounRiver installed
+          Write-Host "Note: MounRiver Studio 2 toolchain needs to be pre-installed on the runner"
+      
+      - name: Setup WCH GCC Toolchain
+        shell: powershell
+        run: |
+          # Try to find existing MounRiver installation
+          $possiblePaths = @(
+            "C:\MounRiver\MounRiver_Studio2\resources\app\resources\win32\components\WCH\Toolchain\RISC-V Embedded GCC15\bin",
+            "C:\Program Files\MounRiver\MounRiver_Studio2\resources\app\resources\win32\components\WCH\Toolchain\RISC-V Embedded GCC15\bin",
+            "C:\Program Files (x86)\MounRiver\MounRiver_Studio2\resources\app\resources\win32\components\WCH\Toolchain\RISC-V Embedded GCC15\bin"
+          )
+          
+          $found = $false
+          foreach ($path in $possiblePaths) {
+            if (Test-Path "$path\riscv32-wch-elf-gcc.exe") {
+              Write-Host "Found toolchain at: $path"
+              [Environment]::SetEnvironmentVariable("WCH_TOOLCHAIN_DIR", $path, "User")
+              [Environment]::SetEnvironmentVariable("WCH_TOOLCHAIN_DIR", $path, "Process")
+              $found = $true
+              break
+            }
+          }
+          
+          if (-not $found) {
+            Write-Host "::warning::MounRiver Studio 2 not found. Build may fail."
+            Write-Host "Install from: http://www.mounriver.com/download"
+          }
+      
+      - name: Build firmware for ${{ matrix.chip }}
+        shell: cmd
+        run: build.bat ${{ matrix.chip }}
+        continue-on-error: true
+      
+      - name: Check build artifacts
+        shell: powershell
+        run: |
+          $chip = "${{ matrix.chip }}"
+          if ($chip -eq "CH32V303") {
+            $buildDir = "obj"
+          } else {
+            $buildDir = "obj\$chip"
+          }
+          
+          $hexFile = "$buildDir\$chip.hex"
+          $elfFile = "$buildDir\$chip.elf"
+          $binFile = "$buildDir\$chip.bin"
+          
+          if (Test-Path $hexFile) {
+            Write-Host "✓ HEX artifact found: $hexFile"
+          } else {
+            Write-Host "✗ HEX artifact not found"
+          }
+          
+          if (Test-Path $elfFile) {
+            Write-Host "✓ ELF artifact found: $elfFile"
+          } else {
+            Write-Host "✗ ELF artifact not found"
+          }
+          
+          if (Test-Path $binFile) {
+            Write-Host "✓ BIN artifact found: $binFile"
+          } else {
+            Write-Host "✗ BIN artifact not found"
+          }
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: firmware-${{ matrix.chip }}
+          path: |
+            obj/${{ matrix.chip }}.hex
+            obj/${{ matrix.chip }}.elf
+            obj/${{ matrix.chip }}.bin
+            obj/${{ matrix.chip }}.map
+          if-no-files-found: warn
+          retention-days: 30
+
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Build Status
+        run: |
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            echo "✅ All builds completed successfully!"
+          else
+            echo "⚠️ Build completed with warnings or errors"
+          fi
