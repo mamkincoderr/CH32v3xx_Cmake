@@ -2,7 +2,7 @@
 
 Автор: [mamkincoderr](https://github.com/mamkincoderr) · [Telegram](https://t.me/oDeXteRo)
 
-Минимальный CMake-шаблон прошивки: `printf("Hello World")` по USART1 (PB6 remap, 115200). Собирается и из консоли, и из **MRS 1.92**.
+Минимальный CMake-шаблон прошивки: `printf("Hello World")` по USART1 (303: PB6 remap, 307: PA9), 115200. Собирается и из консоли, и из **MRS 1.92**.
 Сборка и прошивка — как в `DCDC_Cmake` (CMake + Ninja + GCC 15 из MRS2 + OpenOCD/WCH-Link-E).
 Выбор кристалла — по официальному EVT [openwch/ch32v307](https://github.com/openwch/ch32v307).
 
@@ -100,7 +100,7 @@ Eclipse может передать лишние аргументы (`-j24 all` 
 
 Чип для `flash.ps1` — какой был собран последним (см. `obj\built_as.txt`). Скрипт не сверяет прошивку с реальным кристаллом на плате.
 
-USART: **PB6** (USART1 remap), 115200 8N1 — так разведён WCH-Link SERIAL на этой плате (`DCDC_Cmake` uart_pgc). Официальный EVT USART_Printf сидит на PA9; для шаблона оставлен remap под эту плату.
+USART: 115200 8N1, WCH-Link SERIAL. **CH32V303** — remap **PB6** (плата DCDC). **CH32V307** — **PA9**, без remap (EVT USART_Printf).
 
 ## Что внутри, чего нет
 

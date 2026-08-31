@@ -1,8 +1,8 @@
 ENTRY( _start )
 
 /* CH32V307 — generated from this template by CMake.
-   CH32V307_MEM in User/main.c selects one of 4 RAM_CODE_MOD maps.
-   Physical flash 480K. First 128K of CODE is 0-wait; SLOWFLASH is the
+   CH32V307_MEM in User/ch32v307_mem.h selects one of 4 RAM_CODE_MOD maps.
+   Physical flash 480K. CODE window is R0WAIT; SLOWFLASH is the
    remainder after the CODE window (wait-state), used for .rodata. */
 __stack_size = 2048;
 
@@ -40,6 +40,17 @@ SECTIONS
 		*(.gnu.linkonce.t.*)
 		. = ALIGN(4);
 	} >FLASH AT>FLASH
+
+	.SLOWFLASH :
+	{
+		. = ALIGN(4);
+		*(.rodata)
+		*(.rodata*)
+		*(.fl_data)
+		*(.SLOWFLASH)
+		*(.SLOWFLASH.*)
+		. = ALIGN(4);
+	} >SLOWFLASH AT>SLOWFLASH
 
 	.fini :
 	{
@@ -122,17 +133,6 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE( _edata = .);
 	} >RAM AT>FLASH
-
-	.SLOWFLASH :
-	{
-		. = ALIGN(4);
-		*(.rodata)
-		*(.rodata*)
-		*(.fl_data)
-		*(.SLOWFLASH)
-		*(.SLOWFLASH.*)
-		. = ALIGN(4);
-	} >SLOWFLASH AT>SLOWFLASH
 
 	.bss :
 	{

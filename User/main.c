@@ -6,13 +6,13 @@
  * WCH EVT            : USART_Printf example (debug.c / SPL)
  * Version            : V1.0.0
  * Date               : 2026/08/28
- * Description        : Hello World — USART1 printf (PA9), 115200.
+ * Description        : Hello World — USART1 printf, 115200.
  *
  * Based on official EVT USART_Printf:
  *   https://github.com/openwch/ch32v307/blob/main/EVT/EXAM/USART/USART_Printf/User/main.c
  *
- * USART1_Tx(PB6, remap). Official EVT uses PA9; this board routes
- * WCH-Link SERIAL to the remapped pins (same as DCDC_Cmake uart_pgc).
+ * USART1 TX: CH32V307 = PA9 (EVT, no remap); CH32V303 = PB6 (remap,
+ * DCDC / WCH-Link SERIAL). See USART_Printf_Init() in Debug/debug.c.
  *******************************************************************************/
 
 #include "chip_select.h"

@@ -333,6 +333,17 @@ handle_reset:
 
 	/* SRAM is 32K until option bytes apply; 0x20004000 is inside all 4 modes. */
 	la sp, 0x20004000
+	/* mtvec/FPU before MemConfig — a trap here with mtvec=0 re-enters _start
+	   (reset loop, debugger cannot attach, UART silent). */
+	li t0, 0x1f
+	csrw 0xbc0, t0
+	li t0, 0x0b
+	csrw 0x804, t0
+	li t0, 0x6088
+	csrw mstatus, t0
+	la t0, _vector_base
+	ori t0, t0, 3
+	csrw mtvec, t0
 	jal MemConfig
 	la sp, _eusrstack
 

@@ -14,6 +14,12 @@
 void NMI_Handler(void) __attribute__((interrupt()));
 void HardFault_Handler(void) __attribute__((interrupt()));
 
+volatile uint32_t hf_mepc;
+volatile uint32_t hf_mcause;
+volatile uint32_t hf_mtval;
+volatile uint32_t hf_sp;
+volatile uint32_t hf_ra;
+
 /*********************************************************************
  * @fn      NMI_Handler
  *
@@ -38,8 +44,20 @@ void NMI_Handler(void)
  */
 void HardFault_Handler(void)
 {
+    uint32_t mepc, mcause, mtval, sp, ra;
+
+    __asm volatile("csrr %0, mepc" : "=r"(mepc));
+    __asm volatile("csrr %0, mcause" : "=r"(mcause));
+    __asm volatile("csrr %0, mtval" : "=r"(mtval));
+    __asm volatile("mv %0, sp" : "=r"(sp));
+    __asm volatile("mv %0, ra" : "=r"(ra));
+    hf_mepc = mepc;
+    hf_mcause = mcause;
+    hf_mtval = mtval;
+    hf_sp = sp;
+    hf_ra = ra;
+
     while (1)
     {
-        __disable_irq();
     }
 }

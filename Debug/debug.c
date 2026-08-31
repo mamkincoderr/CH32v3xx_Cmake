@@ -65,8 +65,16 @@ void USART_Printf_Init(uint32_t baudrate)
     USART_InitTypeDef USART_InitStructure;
 
 #if (DEBUG == DEBUG_UART1)
-    /* This board (DCDC / WCH-Link SERIAL) wires USART1 via full remap:
-       TX=PB6, RX=PB7. Official EVT USART_Printf uses default PA9. */
+#if CH32v3xx_CHIP == 307
+    /* EVT USART_Printf / WCH-Link SERIAL on V307: USART1 TX=PA9 (no remap). */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOA, ENABLE);
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+#else
+    /* CH32V303 DCDC board: WCH-Link SERIAL on USART1 remap TX=PB6. */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
     GPIO_PinRemapConfig(GPIO_Remap_USART1, ENABLE);
 
@@ -74,6 +82,7 @@ void USART_Printf_Init(uint32_t baudrate)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
+#endif
 
 #elif (DEBUG == DEBUG_UART2)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
