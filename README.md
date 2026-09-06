@@ -2,6 +2,10 @@
 
 [![visits](https://hits.sh/github.com/mamkincoderr/CH32v3xx_Cmake.svg?view=today-total&label=visits)](https://hits.sh/github.com/mamkincoderr/CH32v3xx_Cmake/)
 [![M8ven Score](https://m8ven.ai/badge/mcp/mamkincoderr-ch32v3xx-cmake-19bek7)](https://m8ven.ai/mcp/mamkincoderr-ch32v3xx-cmake-19bek7)
+[![stars](https://img.shields.io/github/stars/mamkincoderr/CH32v3xx_Cmake?logo=github)](https://github.com/mamkincoderr/CH32v3xx_Cmake/stargazers)
+[![forks](https://img.shields.io/github/forks/mamkincoderr/CH32v3xx_Cmake?logo=github)](https://github.com/mamkincoderr/CH32v3xx_Cmake/network/members)
+[![last commit](https://img.shields.io/github/last-commit/mamkincoderr/CH32v3xx_Cmake)](https://github.com/mamkincoderr/CH32v3xx_Cmake/commits/main)
+[![code size](https://img.shields.io/github/languages/code-size/mamkincoderr/CH32v3xx_Cmake)](https://github.com/mamkincoderr/CH32v3xx_Cmake)
 
 **[Русский](#русский)** · **[English](#english)** · **[中文](#中文)**
 
