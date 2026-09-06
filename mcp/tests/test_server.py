@@ -117,7 +117,11 @@ class ToolAnnotations(unittest.TestCase):
         )
         for name, t in by_name.items():
             self.assertIsNotNone(t.annotations, f"{name}: no annotations")
-            self.assertIsNotNone(t.annotations.readOnlyHint, f"{name}: no readOnlyHint")
+            # M8ven / OpenAI compat: all four hints set to explicit bools
+            for hint in ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"):
+                self.assertIsInstance(
+                    getattr(t.annotations, hint), bool, f"{name}: {hint} not an explicit bool"
+                )
 
     def test_flash_is_flagged_destructive_and_open_world(self):
         tools = {t.name: t for t in asyncio.run(server.mcp.list_tools())}

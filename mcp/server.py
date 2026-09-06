@@ -199,6 +199,8 @@ def _kill_ocd() -> None:
     annotations=ToolAnnotations(
         title="Detect host toolchain",
         readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
         openWorldHint=False,
     ),
 )
