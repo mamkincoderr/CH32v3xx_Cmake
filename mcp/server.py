@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FLASH_MODES = ("program", "probe", "verify", "erase", "reset", "lock", "unlock")
@@ -193,7 +194,14 @@ def _kill_ocd() -> None:
             pass
 
 
-@mcp.tool(description="Detect cmake, ninja, WCH GCC15, OpenOCD, GDB and WCH-Link-E on this machine.")
+@mcp.tool(
+    description="Detect cmake, ninja, WCH GCC15, OpenOCD, GDB and WCH-Link-E on this machine.",
+    annotations=ToolAnnotations(
+        title="Detect host toolchain",
+        readOnlyHint=True,
+        openWorldHint=False,
+    ),
+)
 def env() -> str:
     gcc_bin = _find_toolchain_bin()
     ocd_exe, ocd_cfg = _find_openocd()
@@ -216,7 +224,16 @@ def env() -> str:
     )
 
 
-@mcp.tool(description="Build firmware with build.bat (CMake+Ninja, GCC 15). Chip is picked by hand in User/chip_select.h — this tool takes no chip argument.")
+@mcp.tool(
+    description="Build firmware with build.bat (CMake+Ninja, GCC 15). Chip is picked by hand in User/chip_select.h — this tool takes no chip argument.",
+    annotations=ToolAnnotations(
+        title="Build firmware",
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    ),
+)
 def build(clean: bool = False) -> str:
     bat = PROJECT_ROOT / "build.bat"
     cmd = ["cmd", "/c", str(bat)]
@@ -249,7 +266,14 @@ def build(clean: bool = False) -> str:
         "that to the connected silicon — any image may be programmed. "
         "lock/unlock are destructive (see their own docstring) and refuse "
         "to run without confirm=true."
-    )
+    ),
+    annotations=ToolAnnotations(
+        title="Flash / probe / erase / lock the MCU",
+        readOnlyHint=False,
+        destructiveHint=True,
+        idempotentHint=False,
+        openWorldHint=True,
+    ),
 )
 def flash(mode: str = "program", confirm: bool = False) -> str:
     """mode=lock enables read-protect: can leave the chip unprogrammable/
@@ -310,7 +334,16 @@ def flash(mode: str = "program", confirm: bool = False) -> str:
     )
 
 
-@mcp.tool(description="Start OpenOCD GDB server on localhost:3333 and halt the core, using whatever build.bat last built.")
+@mcp.tool(
+    description="Start OpenOCD GDB server on localhost:3333 and halt the core, using whatever build.bat last built.",
+    annotations=ToolAnnotations(
+        title="Start OpenOCD GDB server",
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+    ),
+)
 def debug_start() -> str:
     global _ocd_proc, _ocd_log
     _kill_ocd()
@@ -358,7 +391,16 @@ def debug_start() -> str:
     return _ok(False, error="timeout waiting for GDB port 3333", log=text[-4000:])
 
 
-@mcp.tool(description="Run gdb --batch commands against the OpenOCD server started by debug_start. Example commands: ['bt','info registers pc sp ra'].")
+@mcp.tool(
+    description="Run gdb --batch commands against the OpenOCD server started by debug_start. Example commands: ['bt','info registers pc sp ra'].",
+    annotations=ToolAnnotations(
+        title="Run GDB batch commands",
+        readOnlyHint=False,
+        destructiveHint=True,
+        idempotentHint=False,
+        openWorldHint=True,
+    ),
+)
 def debug_exec(commands: list[str]) -> str:
     if _ocd_proc is None or _ocd_proc.poll() is not None:
         return _ok(False, error="GDB server is not running — call debug_start first")
@@ -386,7 +428,16 @@ def debug_exec(commands: list[str]) -> str:
     return _ok(code == 0, exit_code=code, output=log[-8000:])
 
 
-@mcp.tool(description="Stop the GDB server and resume the core (wlink_reset_resume). Always call this after debug_start.")
+@mcp.tool(
+    description="Stop the GDB server and resume the core (wlink_reset_resume). Always call this after debug_start.",
+    annotations=ToolAnnotations(
+        title="Stop GDB server, resume core",
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+    ),
+)
 def debug_stop() -> str:
     _kill_ocd()
     ps1 = PROJECT_ROOT / "flash.ps1"

@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Test runner for mcp/tests/. The tests are plain unittest.TestCase, so
+# `python -m unittest discover -s mcp/tests` works without this; pytest
+# just gives nicer output.
+pytest>=8.0
