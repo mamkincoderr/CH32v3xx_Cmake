@@ -4,5 +4,10 @@
 
 __pycache__/
 *.pyc
+.pytest_cache/
 obj/openocd-gdb.log
+
+# Local embeddedskills / workflow skill state (machine-specific: COM port,
+# last-observe timestamps). Not project content.
+.embeddedskills/
 

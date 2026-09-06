@@ -20,7 +20,7 @@
 #define MEM288_32   0b111   /* CODE 288K + RAM  32K  (EVT default) */
 
 /* Pick one: MEM192_128, MEM224_96, MEM256_64 or MEM288_32. */
-#define CH32V307_MEM  MEM288_32
+#define CH32V307_MEM  MEM256_64
 
 void MemConfig(void);
 

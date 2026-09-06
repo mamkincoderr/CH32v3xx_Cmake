@@ -20,7 +20,7 @@
 #define CH32v3xx_CHIP_SELECT_H
 
 /* Pick one: 303 or 307. */
-#define CH32v3xx_CHIP   303
+#define CH32v3xx_CHIP   307
 
 #if CH32v3xx_CHIP == 307
 #define CH32v3xx_CHIP_STR "CH32V307"
