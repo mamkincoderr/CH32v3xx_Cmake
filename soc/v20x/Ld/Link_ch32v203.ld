@@ -1,16 +1,32 @@
 ENTRY( _start )
 
-/* Default map MEM288_32 (EVT). CMake overwrites obj/.../Link_ch32v307.ld
-   from Link_ch32v307.ld.in according to CH32V307_MEM in User/main.c. */
+/* CH32V203 D6 (CH32V203 F8/G8/K8/C8 — 64K parts; F6/G6/K6/C6 — 32K parts).
+ *
+ * The die actually carries 256K of flash: 224K user-visible + 28K boot + 4K
+ * option/vendor. The user 224K is split by access speed (a separate flash die,
+ * see the CH32V20x RM "Flash" section / the CH32V203 decap notes):
+ *
+ *   FLASH     0x00000000 + 64K   zero-wait  ("R0WAIT" / documented capacity),
+ *                                 full speed even at 144 MHz — put code here
+ *   SLOWFLASH 0x00010000 + 160K  non-zero-wait, ~10x slower reads, still XIP
+ *                                 and programmable — rodata / bulk const data
+ *
+ * Total user flash 0x00000000..0x00038000 (224K). Same idea as the V303/V307
+ * scripts in soc/v30x/Ld/. OpenOCD needs `wch_riscv unfreeze` before writing
+ * past 0x10000 — flash.ps1 / the MCP `flash` already issue it.
+ *
+ * 32K parts (C6/F6/G6/K6): the zero-wait window is 32K — set FLASH LENGTH = 32K
+ * and SLOWFLASH ORIGIN = 0x00008000, LENGTH = 192K.
+ */
 __stack_size = 2048;
 
 PROVIDE( _stack_size = __stack_size );
 
 MEMORY
 {
-	FLASH     (rx) : ORIGIN = 0x00000000, LENGTH = 288K
-	SLOWFLASH (rx) : ORIGIN = 0x00048000, LENGTH = 192K
-	RAM       (xrw): ORIGIN = 0x20000000, LENGTH = 32K
+	FLASH     (rx) : ORIGIN = 0x00000000, LENGTH = 64K
+	SLOWFLASH (rx) : ORIGIN = 0x00010000, LENGTH = 160K
+	RAM       (xrw): ORIGIN = 0x20000000, LENGTH = 20K
 }
 
 SECTIONS
@@ -38,6 +54,17 @@ SECTIONS
 		*(.gnu.linkonce.t.*)
 		. = ALIGN(4);
 	} >FLASH AT>FLASH
+
+	.SLOWFLASH :
+	{
+		. = ALIGN(4);
+		*(.rodata)
+		*(.rodata*)
+		*(.fl_data)
+		*(.SLOWFLASH)
+		*(.SLOWFLASH.*)
+		. = ALIGN(4);
+	} >SLOWFLASH AT>SLOWFLASH
 
 	.fini :
 	{
@@ -120,17 +147,6 @@ SECTIONS
 		. = ALIGN(4);
 		PROVIDE( _edata = .);
 	} >RAM AT>FLASH
-
-	.SLOWFLASH :
-	{
-		. = ALIGN(4);
-		*(.rodata)
-		*(.rodata*)
-		*(.fl_data)
-		*(.SLOWFLASH)
-		*(.SLOWFLASH.*)
-		. = ALIGN(4);
-	} >SLOWFLASH AT>SLOWFLASH
 
 	.bss :
 	{
