@@ -1,6 +1,6 @@
 # ch32-wch MCP
 
-stdio MCP server for **build / flash / debug** of this CH32V303 / CH32V307 CMake template (WCH-Link-E, OpenOCD, GCC 15).
+stdio MCP server for **build / flash / debug** of this CH32V203 / CH32V303 / CH32V307 CMake template (WCH-Link-E, OpenOCD, GCC 15).
 
 It does not talk to GitHub. Run it from a clone of this template. Any built image may be programmed onto the probe that is plugged in.
 
@@ -24,7 +24,7 @@ Do **not** use `python -m mcp.server` — that name clashes with the `mcp` packa
 
 ## Tools
 
-Chip (303 vs 307) is not a tool argument — it is hand-picked in `User/chip_select.h`. `build` and `flash` always act on whatever that file currently says; check `obj/built_as.txt` (mirrored in `build`'s result) to see what was actually built.
+Chip (203, 303 or 307) is not a tool argument — it is hand-picked in `User/chip_select.h`. `build` and `flash` always act on whatever that file currently says; check `obj/built_as.txt` (mirrored in `build`'s result) to see what was actually built.
 
 | Tool | Role |
 |---|---|

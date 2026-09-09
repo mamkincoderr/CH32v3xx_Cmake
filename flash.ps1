@@ -23,9 +23,9 @@
     all firmware lost), lock can leave the chip unprogrammable/undebuggable
     until unlocked (which then erases it).
 
-    wch_riscv unfreeze: without it OpenOCD only sees the 128K R0WAIT bank.
-    Needed when the image has SLOWFLASH (.rodata at 0x20000 on V303, or past
-    the CODE window on V307).
+    wch_riscv unfreeze: without it OpenOCD only sees the R0WAIT bank.
+    Needed when the image has SLOWFLASH (.rodata at 0x20000 on V303, past the
+    CODE window on V307, or at 0x10000 on V203). Every 'program' run issues it.
 #>
 [CmdletBinding()]
 param(

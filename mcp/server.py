@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""stdio MCP: build / flash / debug CH32V303 and CH32V307 via WCH-Link-E.
+"""stdio MCP: build / flash / debug CH32V203 / CH32V303 / CH32V307 via WCH-Link-E.
 
 Author: mamkincoderr
   https://github.com/mamkincoderr
@@ -37,8 +37,8 @@ _ocd_log: Optional[Path] = None
 mcp = FastMCP(
     "ch32-wch",
     instructions=(
-        "Build, flash and debug this WCH CH32V303/CH32V307 CMake+Ninja "
-        "template using WCH-Link-E / OpenOCD. The chip (303 vs 307) is "
+        "Build, flash and debug this WCH CH32V203/CH32V303/CH32V307 CMake+Ninja "
+        "template using WCH-Link-E / OpenOCD. The chip (203, 303 or 307) is "
         "picked by hand in User/chip_select.h, not by a tool argument — "
         "read obj/built_as.txt after build() to see which chip was built. "
         "Any built image may be programmed onto the connected probe. "

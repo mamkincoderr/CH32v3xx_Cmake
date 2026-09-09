@@ -17,7 +17,9 @@
 
 #include "chip_select.h"
 #include "debug.h"
-#include "ch32v307_mem.h"
+#if CH32vxxx_CHIP == 307
+#include "ch32v307_mem.h"   /* soc/v30x/System — 307-only RAM_CODE_MOD */
+#endif
 
 /*********************************************************************
  * @fn      main
@@ -29,16 +31,21 @@
 
 int main(void)
 {
+#if CH32vxxx_CHIP == 203
+    /* QingKe V4B/C (CH32V20x) has only 2 nesting levels: groups 0 and 1. */
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+#else
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+#endif
     SystemCoreClockUpdate();
     Delay_Init();
     USART_Printf_Init(115200);
 
     printf("Hello World from CH32v3xx_Cmake\r\n");
-    printf("Built as %s (CH32v3xx_CHIP=%d)\r\n", CH32v3xx_CHIP_STR, CH32v3xx_CHIP);
+    printf("Built as %s (CH32vxxx_CHIP=%d)\r\n", CH32vxxx_CHIP_STR, CH32vxxx_CHIP);
     printf("SystemClk:%d\r\n", SystemCoreClock);
     printf("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
-#if CH32v3xx_CHIP == 307
+#if CH32vxxx_CHIP == 307
     printf("Chip family: CH32V30x_D8C (CH32V307/305/317)\r\n");
 #if CH32V307_MEM == MEM288_32
     printf("Flash mode: MEM288_32  CODE 288K + RAM 32K\r\n");
@@ -49,10 +56,12 @@ int main(void)
 #elif CH32V307_MEM == MEM192_128
     printf("Flash mode: MEM192_128 CODE 192K + RAM 128K\r\n");
 #endif
-#elif CH32v3xx_CHIP == 303
+#elif CH32vxxx_CHIP == 303
     printf("Chip family: CH32V30x_D8 (CH32V303)\r\n");
+#elif CH32vxxx_CHIP == 203
+    printf("Chip family: CH32V20x_D6 (CH32V203)\r\n");
 #else
-#error "main.c: CH32v3xx_CHIP must be 303 or 307"
+#error "main.c: CH32vxxx_CHIP must be 203, 303 or 307"
 #endif
 
     uint32_t n = 0;

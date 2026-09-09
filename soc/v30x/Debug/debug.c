@@ -65,7 +65,7 @@ void USART_Printf_Init(uint32_t baudrate)
     USART_InitTypeDef USART_InitStructure;
 
 #if (DEBUG == DEBUG_UART1)
-#if CH32v3xx_CHIP == 307
+#if CH32vxxx_CHIP == 307
     /* EVT USART_Printf / WCH-Link SERIAL on V307: USART1 TX=PA9 (no remap). */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOA, ENABLE);
 
