@@ -18,7 +18,7 @@ Project root is the template directory (parent of `mcp/`).
 ## Tools
 
 1. `env` — cmake, ninja, GCC 15, OpenOCD, GDB, WCH-Link. Need `wch_link.rv_mode=true` (`VID_1A86&PID_8010`). `PID_8012` is ARM mode — switch the adapter with WCH-LinkUtility.
-2. `build` — no chip argument. Chip is hand-picked in `User/chip_select.h` (`CH32v3xx_CHIP` 303 or 307), CMake reads that file. `clean`: bool. Result includes `chip` = contents of `obj/built_as.txt` so you can see what was actually built.
+2. `build` — no chip argument. Chip is hand-picked in `User/chip_select.h` (`CH32vxxx_CHIP` = **203**, 303 or 307), CMake reads that file and selects the `soc/v20x` or `soc/v30x` vendor tree. `clean`: bool. Result includes `chip` = contents of `obj/built_as.txt` so you can see what was actually built. `203` = CH32V203 D6 (F/G/K/C parts, no FPU, `rv32imacxw`/`ilp32`, 64K/20K).
 3. `flash` — `mode`: `program` | `probe` | `verify` | `erase` | `reset` | `lock` | `unlock`. Uses whatever `build` last produced. Program any built image onto the connected probe; do not refuse a CHIP/silicon mismatch.
    - `probe` identifies the connected chip: `device_id`, `flash_kb` (and `rom_kb`/`ram_kb` when the log carries them).
    - `lock`/`unlock` touch the read-protect option byte and are **refused unless `confirm=true`**. `unlock` forces a mass erase — all firmware lost, irreversible. `lock` can leave the chip unprogrammable/undebuggable until unlocked (which then erases it). Only pass `confirm=true` after the user has explicitly asked for a lock/unlock in this conversation — never default to it or infer approval from an unrelated build/flash request. Verified live on a CH32V303: `unlock` → `Success to Disable Read-Protect`, `lock` → `Success to Enable Read-Protect`, chip stayed reachable both times.
@@ -36,7 +36,9 @@ One-shot snapshot: start → exec → stop. Session: start, several execs, stop 
 
 ## Artifacts
 
-Single output, chip-independent name: `obj/CH32v3xx_Cmake.elf` / `.hex`. `obj/built_as.txt` says which chip (303/307) that binary actually is — check it before flashing, since it reflects `User/chip_select.h` at the time of the last `build`, not whatever the caller assumes.
+Single output, chip-independent name: `obj/CH32v3xx_Cmake.elf` / `.hex`. `obj/built_as.txt` says which chip (203/303/307) that binary actually is — check it before flashing, since it reflects `User/chip_select.h` at the time of the last `build`, not whatever the caller assumes.
+
+Vendor SPL lives under `soc/v20x/` (CH32V203) and `soc/v30x/` (CH32V303/307) — separate trees, never mixed. `User/` is app-only (`main.c`, `chip_select.h`). MRS `.cproject`/`.launch` still point at the pre-`soc/` layout — an IDE-side fix-up, not a `build.bat`/MCP concern.
 
 `flash program` needs a prior `build`. LTO is off in CMake — keep it off for stepping.
 
@@ -97,7 +99,7 @@ Keep the target's `Core/`, `Peripheral/`, `Startup/`, `Debug/`, `Ld/`, `User/` i
 ## 3. Adapt CMakeLists.txt
 
 - `project(<Name> C ASM)` — single fixed artifact name (`${PROJECT_NAME}`), not a per-chip string. One `obj/`, no CHIP cache variable.
-- Chip is selected by hand in a plain tracked header (this template: `User/chip_select.h`, macro `CH32v3xx_CHIP` = 303/307), **not** a CMake cache var / command-line `-DCHIP=`. CMake reads that file with `file(READ) + string(MATCHES)` regex to pick `CHIP_DEFINE` + **one** `STARTUP_FILE` + matching `LINKER_SCRIPT`. This is deliberate, not a shortcut: a CMake `-D`/generated-header scheme is invisible to MRS 1.92's CDT indexer (Managed Build off, no compile_commands.json support in its CDT 6.5), so `#if`/`#elif` greying in the editor goes wrong. A plain header that main.c `#include`s directly resolves the same way for the real compiler and for the indexer. Force-include the same header (`-include`) for the vendor sources (Core/Peripheral/Debug) that don't include it themselves.
+- Chip is selected by hand in a plain tracked header (this template: `User/chip_select.h`, macro `CH32vxxx_CHIP` = 303/307), **not** a CMake cache var / command-line `-DCHIP=`. CMake reads that file with `file(READ) + string(MATCHES)` regex to pick `CHIP_DEFINE` + **one** `STARTUP_FILE` + matching `LINKER_SCRIPT`. This is deliberate, not a shortcut: a CMake `-D`/generated-header scheme is invisible to MRS 1.92's CDT indexer (Managed Build off, no compile_commands.json support in its CDT 6.5), so `#if`/`#elif` greying in the editor goes wrong. A plain header that main.c `#include`s directly resolves the same way for the real compiler and for the indexer. Force-include the same header (`-include`) for the vendor sources (Core/Peripheral/Debug) that don't include it themselves.
 - CH32V30x CodeFlash is 480K: R0WAIT (zero-wait, the datasheet "Flash" column) plus SLOWFLASH (non-zero wait). CH32V303CB/RB: FLASH 128K at 0, SLOWFLASH 352K at `0x20000`. CH32V307: SLOWFLASH starts after the CODE window from `#define CH32V307_MEM` in `User/ch32v307_mem.h` (`MEM288_32` / `MEM256_64` / `MEM224_96` / `MEM192_128`) — same hand-edited-header-read-by-regex pattern as the chip pick. CMake generates the 307 MEMORY map. `MemConfig()` is called from `startup_ch32v30x_D8C.S` only — do not rewrite D8. CH32V303CB/RB has no RAM_CODE_MOD.
 - `CPU_FLAGS`: V30x keep `rv32imafcxw` / `ilp32f`; V20x use `rv32imacxw` / `ilp32` (no `f`). Do not “upgrade” V203 to `ilp32f`.
 - `add_folder_objects` only for directories that contain `*.c` **directly** (not recursive). Extra app folders (`User/Lib`, …) need extra calls.

@@ -1,29 +1,34 @@
-# CH32v3xx_Cmake — Hello World для CH32V303 / CH32V307
+# CH32v3xx_Cmake — Hello World для CH32V203 / CH32V303 / CH32V307
 
 Автор: [mamkincoderr](https://github.com/mamkincoderr) · [Telegram](https://t.me/oDeXteRo)
 
-Минимальный CMake-шаблон прошивки: `printf("Hello World")` по USART1 (303: PB6 remap, 307: PA9), 115200. Собирается и из консоли, и из **MRS 1.92**.
+Минимальный CMake-шаблон прошивки: `printf("Hello World")` по USART1 (303: PB6 remap, 307/203: PA9), 115200. Собирается и из консоли, и из **MRS 1.92**.
 Сборка и прошивка — как в `DCDC_Cmake` (CMake + Ninja + GCC 15 из MRS2 + OpenOCD/WCH-Link-E).
-Выбор кристалла — по официальному EVT [openwch/ch32v307](https://github.com/openwch/ch32v307).
+Выбор кристалла — по официальному EVT [openwch/ch32v307](https://github.com/openwch/ch32v307) и [openwch/ch32v20x](https://github.com/openwch/ch32v20x).
 
-> Файл заметок проекта. Корневой `README.md` на GitHub намеренно не выкладывается.
+Вендорные SPL-деревья V20x и V30x лежат раздельно в `soc/v20x/` и `soc/v30x/`
+(разные ядра, заголовки, стартапы, карты линкера — не смешиваются). `User/` —
+только приложение (`main.c`, `chip_select.h`).
+
+> Внутренние заметки по проекту (детали, которых нет в `README.md`). Витрина для GitHub — `README.md` (трёхъязычный).
 
 ## Какой кристалл
 
 Чип выбирается **руками, одной строкой в `User/chip_select.h`**:
 
 ```c
-#define CH32v3xx_CHIP   303   /* или 307 */
+#define CH32vxxx_CHIP   303   /* 203, 303 или 307 */
 ```
 
 Это единственное место выбора — не аргумент `build.bat`, не CMake-кэш. Один `build.bat`, одна конфигурация MRS, один `obj\`.
 
-| `CH32v3xx_CHIP` | Макрос (официальный `ch32v30x.h`) | Стартап | Линкер |
-|---|---|---|---|
-| **303** (по умолчанию, эта плата) | `CH32V30x_D8` | `startup_ch32v30x_D8.S` | FLASH 128K (R0WAIT) + SLOWFLASH 352K. Нет RAM_CODE_MOD. |
-| **307** | `CH32V30x_D8C` | `startup_ch32v30x_D8C.S` | 4 режима CODE/RAM; карта из `CH32V307_MEM` в `User/ch32v307_mem.h` |
+| `CH32vxxx_CHIP` | Дерево | Макрос | Стартап | Линкер |
+|---|---|---|---|---|
+| **203** | `soc/v20x` | `CH32V20x_D6` | `startup_ch32v20x_D6.S` | FLASH 64K R0WAIT + SLOWFLASH 160K (с `0x10000`) + RAM 20K. Без FPU (`rv32imacxw`/`ilp32`). CH32V203 F8/G8/K8/C8 (у ...6 — 32K/192K) |
+| **303** (по умолчанию) | `soc/v30x` | `CH32V30x_D8` | `startup_ch32v30x_D8.S` | FLASH 128K (R0WAIT) + SLOWFLASH 352K. Нет RAM_CODE_MOD. |
+| **307** | `soc/v30x` | `CH32V30x_D8C` | `startup_ch32v30x_D8C.S` | 4 режима CODE/RAM; карта из `CH32V307_MEM` в `soc/v30x/System/ch32v307_mem.h` |
 
-CodeFlash семейства — до 480K: нулевые ожидания (R0WAIT, в таблице DS графа Flash) и **SLOWFLASH** (non-zero wait data). У 303CB/RB R0WAIT = 128K, SLOWFLASH с `0x20000` длиной 352K (как `Master16A`). У 307 граница SLOWFLASH сдвигается вместе с окном CODE (`RAM_CODE_MOD`).
+CodeFlash семейства — нулевые ожидания (R0WAIT, в таблице DS графа Flash) и **SLOWFLASH** (non-zero wait, ~10× медленнее на чтение, но так же XIP и программируется). У 303CB/RB R0WAIT = 128K, SLOWFLASH с `0x20000` длиной 352K (как `Master16A`). У 307 граница SLOWFLASH сдвигается вместе с окном CODE (`RAM_CODE_MOD`). У **203** физический кристалл флеша — 256K (отдельный die): 224K пользовательских = R0WAIT 64K (`0x0`) + SLOWFLASH 160K (`0x10000`…`0x38000`); у 32K-версий (…6) R0WAIT 32K, SLOWFLASH 192K с `0x8000`. Линкер кладёт `.rodata`/`.fl_data` в SLOWFLASH на всех трёх; `flash.ps1`/MCP `flash` перед записью за R0WAIT делают `wch_riscv unfreeze`.
 
 `chip_select.h` — обычный `#include`, не CMake-генерируемый файл и не `-D` через командную строку. Именно поэтому редактор MRS 1.92 корректно подсвечивает неактивные `#if`/`#elif` в `main.c` — индексатор Eclipse CDT видит значение так же, как реальный компилятор, без знания про `-include`/`-D`.
 
@@ -31,7 +36,7 @@ CodeFlash семейства — до 480K: нулевые ожидания (R0W
 
 У CH32V307 option byte `RAM_CODE_MOD` (2 бита, окно CODE+SRAM = 320K, физическая флеш 480K). У CH32V303CB/RB этого option byte нет: R0WAIT всегда 128K.
 
-Выбор — одна строка в `User/ch32v307_mem.h` (ignored, если `CH32v3xx_CHIP` = 303):
+Выбор — одна строка в `soc/v30x/System/ch32v307_mem.h` (ignored, если `CH32vxxx_CHIP` = 303):
 
 ```c
 #define CH32V307_MEM  MEM288_32
@@ -44,19 +49,20 @@ CodeFlash семейства — до 480K: нулевые ожидания (R0W
 | `MEM224_96` | 224K | 96K | 256K с `0x38000` |
 | `MEM192_128` | 192K | 128K | 288K с `0x30000` |
 
-CMake читает эту строку (`file(READ) + regex`, тем же способом, каким читает `CH32v3xx_CHIP` из `chip_select.h`) и собирает `Link_ch32v307.ld`. `MemConfig()` вызывается из `startup_ch32v30x_D8C.S` до копирования `.data` (временный SP `0x20004000`, внутри 32K). Если option byte не совпал — программируется USER и идёт reset.
+CMake читает эту строку (`file(READ) + regex`, тем же способом, каким читает `CH32vxxx_CHIP` из `chip_select.h`) и собирает `Link_ch32v307.ld`. `MemConfig()` вызывается из `startup_ch32v30x_D8C.S` до копирования `.data` (временный SP `0x20004000`, внутри 32K). Если option byte не совпал — программируется USER и идёт reset.
 
 `SLOWFLASH` — wait-state флеш. Туда кладутся `.rodata` и `section(".SLOWFLASH")` на обоих кристаллах.
 
 Стартап D8 (303) не тронут. В D8C добавлены только `jal MemConfig` и временный стек.
+Стартап D6 (203) — сток WCH, не тронут (`MemConfig`/`RAM_CODE_MOD` у V203 нет).
 
 Источники WCH:
 
-- Список стартапов: [EVT/CH32V30x_List_EN.txt](https://github.com/openwch/ch32v307/blob/main/EVT/CH32V30x_List_EN.txt) — D8 = CH32V303, D8C = CH32V307/305/317.
+- Список стартапов: [EVT/CH32V30x_List_EN.txt](https://github.com/openwch/ch32v307/blob/main/EVT/CH32V30x_List_EN.txt) — D8 = CH32V303, D8C = CH32V307/305/317; [ch32v20x](https://github.com/openwch/ch32v20x) — D6 = CH32V203 F/G/K/C.
 - Карта памяти: [EVT/EXAM/SRC/Ld/Link.ld](https://github.com/openwch/ch32v307/blob/main/EVT/EXAM/SRC/Ld/Link.ld) (варианты SRAM/Flash — Table 32-3 в CH32FV2x_V3xRM).
 - Hello World: [EVT/EXAM/USART/USART_Printf](https://github.com/openwch/ch32v307/blob/main/EVT/EXAM/USART/USART_Printf/User/main.c) — USART1_Tx(PA9).
 
-**Не заливать образ V307 на плату V303.**
+**Не заливать образ V307 на плату V303, образ V30x на плату V203.**
 
 ## Сборка из консоли
 
@@ -73,7 +79,7 @@ MRS 1.92 здесь **только IDE**: редактор, Project Explorer, м
 
 Открыть: `CH32v3xx_Cmake.wvproj` (или File → Open Projects from File System на эту папку).
 
-Молоток вызывает `build.bat` без аргументов — чип он узнаёт из `chip_config.h`, вернее теперь из `User/chip_select.h` (CMake сам туда заглядывает). В прошивке печатается `Built as CH32V303` или `Built as CH32V307`.
+Молоток вызывает `build.bat` без аргументов — чип он узнаёт из `User/chip_select.h` (CMake сам туда заглядывает). В прошивке печатается `Built as CH32V203` / `CH32V303` / `CH32V307`.
 
 | Действие MRS | Что делает |
 |---|---|
@@ -82,13 +88,19 @@ MRS 1.92 здесь **только IDE**: редактор, Project Explorer, м
 | Download | `.template` → `obj\CH32v3xx_Cmake.hex`. MCU-поле в `.template` статично (`CH32V303CBT6`) — это только подпись в диалоге MRS, на сам процесс прошивки через OpenOCD не влияет |
 | Debug | `CH32v3xx_Cmake.launch` → `obj\CH32v3xx_Cmake.elf`, стоп на `main` |
 
-**Известное ограничение:** SVD в `CH32v3xx_Cmake.launch` (`com.mounriver.debug.gdbjtag.openocd.svdPath`) статично указывает на `CH32V303xx.svd`. Если переключили `chip_select.h` на 307 и хотите видеть верную карту периферии в отладчике — поправьте `svdPath` в этом launch-файле на `CH32V307xx.svd` вручную (загрузка ELF и сама отладка работают правильно независимо от SVD, это касается только окна регистров).
+**Известное ограничение:** SVD в `CH32v3xx_Cmake.launch` (`com.mounriver.debug.gdbjtag.openocd.svdPath`) статично указывает на `CH32V303xx.svd`. Если переключили `chip_select.h` на 307/203 и хотите видеть верную карту периферии в отладчике — поправьте `svdPath` в этом launch-файле на `CH32V307xx.svd` / `CH32V203xx.svd` вручную (загрузка ELF и сама отладка работают правильно независимо от SVD, это касается только окна регистров).
+
+**Индексатор MRS 1.92:** `.cproject` (`sourceEntries`, include paths) и `.launch` пока
+указывают на прежние `Core|Debug|Peripheral|Startup` в корне. После переезда в
+`soc/v20x` + `soc/v30x` их нужно поправить в MRS (Project → Properties → C/C++ General →
+Paths and Symbols / Source Location) — на саму сборку `build.bat`/CMake это не влияет,
+только на подсветку и переход по коду в редакторе.
 
 Нужны те же утилиты, что для DCDC: MRS2 (GCC15), CMake ≥3.20, Ninja. MRS 1.92 своего cmake/ninja не содержит. `build.bat` сам ищет их, даже если IDE запущена со старым PATH.
 
 Eclipse может передать лишние аргументы (`-j24 all` / `-j24 clean`) — `build.bat` их просто игнорирует, кроме `clean`.
 
-Тактование: 144 МГц от HSI+PLL (`SYSCLK_FREQ_144MHz_HSI` в `User/system_ch32v30x.c`) — как на плате `DCDC_Cmake`, без внешнего кварца. Официальные EVT чаще включают HSE 8 МГц.
+Тактование: 144 МГц от HSI+PLL (`SYSCLK_FREQ_144MHz_HSI` в `soc/v30x/System/system_ch32v30x.c`, для 203 — `soc/v20x/System/system_ch32v20x.c`) — как на плате `DCDC_Cmake`, без внешнего кварца. Официальные EVT чаще включают HSE 8 МГц.
 
 ## Прошивка и отладка
 
@@ -100,11 +112,11 @@ Eclipse может передать лишние аргументы (`-j24 all` 
 
 Чип для `flash.ps1` — какой был собран последним (см. `obj\built_as.txt`). Скрипт не сверяет прошивку с реальным кристаллом на плате.
 
-USART: 115200 8N1, WCH-Link SERIAL. **CH32V303** — remap **PB6** (плата DCDC). **CH32V307** — **PA9**, без remap (EVT USART_Printf).
+USART: 115200 8N1, WCH-Link SERIAL. **CH32V303** — remap **PB6** (плата DCDC). **CH32V307** и **CH32V203** — **PA9**, без remap (EVT USART_Printf).
 
 ## Что внутри, чего нет
 
-Есть: `Core/`, `Peripheral/` (SPL WCH), официальные `Debug/debug.c` (delay + USART printf), `User/main.c`.
+Есть: `soc/v30x/` и `soc/v20x/` (`Core/`, `Peripheral/` SPL WCH, `Startup/`, `Debug/debug.c` delay + USART printf, `System/`), `User/main.c`.
 
 Нет: ШИМ, АЦП, CAN, PowerGraph, LVGL, загрузчик. Это точка старта нового проекта, не копия DCDC.
 
